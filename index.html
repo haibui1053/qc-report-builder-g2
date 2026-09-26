@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>QC Report Builder</title>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.6.1/dist/index.iife.js"></script>
+<style>
+  :root{
+    --ink:#1c1c1a; --paper:#fafaf7; --line:#d8d6cd; --accent:#c0503a;
+    --ok:#3d6b47; --panel:#f1efe7; --muted:#6b6a63;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
+    max-width:100vw;overflow-x:hidden;
+    font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+  body{padding-bottom:100px;}
+  header{position:sticky;top:0;z-index:20;background:var(--ink);color:var(--paper);
+    padding:14px 16px;}
+  header .title{font-size:15px;font-weight:600;}
+  header .sub{font-size:11px;color:#b9b8b1;margin-top:2px;}
+  main{padding:14px;max-width:900px;margin:0 auto;}
+  @media (min-width:860px){
+    main{padding:24px;}
+    .desktop-grid{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start;}
+    .desktop-grid .left-col{position:sticky;top:70px;}
+    footer.action-bar{left:50%;transform:translateX(-50%);max-width:900px;
+      border-radius:10px 10px 0 0;border-left:1px solid var(--line);border-right:1px solid var(--line);}
+  }
+  .block{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;}
+  .block-title{font-size:13px;font-weight:700;margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  label{display:block;font-size:11.5px;color:var(--muted);margin:10px 0 4px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text],input[type=number],input[type=date],textarea{
+    width:100%;padding:10px 11px;font-size:15px;border:1px solid var(--line);border-radius:7px;
+    background:var(--paper);color:var(--ink);font-family:inherit;box-sizing:border-box;}
+  input[type=date]{height:41px;appearance:none;-webkit-appearance:none;}
+  input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  textarea{min-height:56px;resize:vertical;line-height:1.4;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .result-toggle{display:flex;gap:8px;margin-top:10px;}
+  .result-toggle button{flex:1;padding:10px;border-radius:7px;border:1px solid var(--line);
+    background:#fff;font-size:13px;font-weight:600;color:var(--muted);}
+  .result-toggle button.active.pass{background:var(--ok);border-color:var(--ok);color:#fff;}
+  .result-toggle button.active.fail{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .box-row{display:grid;grid-template-columns:0.7fr 1.5fr 1fr 0.85fr 1fr 0.85fr;gap:4px;margin-bottom:6px;align-items:center;}
+  .box-row input{font-size:12px;padding:7px 5px;width:100%;box-sizing:border-box;}
+  .box-row input[readonly]{background:var(--panel);color:var(--muted);}
+  .box-row .box-label{display:flex;align-items:center;font-size:11.5px;font-weight:700;color:var(--muted);}
+  .section-card{background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+  .section-head{display:flex;align-items:center;gap:8px;padding:11px 12px;background:var(--panel);
+    border-bottom:1px solid var(--line);}
+  .section-head input{flex:1;min-width:0;border:none;background:transparent;padding:2px 0;font-size:13.5px;font-weight:700;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .section-head input:focus{outline:none;border-bottom:1px solid var(--accent);}
+  .section-del{flex-shrink:0;width:26px;height:26px;border-radius:6px;border:1px solid var(--line);background:#fff;
+    color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .section-body{padding:12px;}
+  .photo-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .photo-slot{position:relative;width:100%;border-radius:6px;overflow:hidden;background:var(--paper);
+    border:1px solid var(--line);box-sizing:border-box;}
+  .photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-remove{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;
+    background:rgba(28,28,26,.75);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;border:none;}
+  .photo-size{position:absolute;bottom:2px;left:2px;right:2px;font-size:8px;color:#fff;
+    background:rgba(28,28,26,.55);border-radius:3px;padding:1px 3px;text-align:center;}
+  .photo-add{position:relative;width:100%;border-radius:6px;border:1.5px dashed var(--line);
+    background:var(--paper);cursor:pointer;display:block;box-sizing:border-box;}
+  .photo-add-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--muted);font-size:10.5px;gap:4px;}
+  .photo-add .plus{font-size:20px;line-height:1;color:var(--accent);}
+  .photo-add input{display:none;}
+  .add-section-btn{width:100%;padding:13px;border-radius:10px;border:1.5px dashed var(--line);background:#fff;
+    color:var(--accent);font-weight:700;font-size:13.5px;}
+  .empty-hint{text-align:center;color:var(--muted);font-size:12.5px;padding:18px 10px;
+    border:1px dashed var(--line);border-radius:10px;background:#fff;}
+  footer.action-bar{position:fixed;bottom:0;left:0;right:0;background:var(--paper);border-top:1px solid var(--line);
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:30;}
+  .btn{flex:1;padding:13px;border-radius:9px;border:none;font-size:14px;font-weight:700;text-align:center;}
+  .btn-secondary{background:#fff;border:1px solid var(--line);color:var(--ink);}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:disabled{opacity:.5;}
+  .note{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45;}
+  .status{font-size:12px;color:var(--ok);text-align:center;margin-top:8px;min-height:16px;}
+</style>
+</head>
+<body>
+
+<header style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+  <div>
+    <div class="title">QC Report Builder</div>
+    <div class="sub">Fill in, export to Word — edit or fix anything in Word after, then save as PDF yourself</div>
+  </div>
+  <div id="resultBadge" style="flex-shrink:0;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700;background:var(--ok);color:#fff;">PASS</div>
+</header>
+
+<main>
+ <div class="desktop-grid">
+  <div class="left-col">
+  <div class="block">
+    <p class="block-title">General Information</p>
+    <label>Item code</label>
+    <input type="text" id="f_item" placeholder="e.g. 981350STAR01U">
+    <div class="row2">
+      <div><label>LINON PO#</label><input type="text" id="f_po" placeholder="49597"></div>
+      <div><label>Client</label><input type="text" id="f_client" placeholder="WH"></div>
+    </div>
+    <div class="row2">
+      <div><label>Name factory</label><input type="text" id="f_factory" placeholder="VTO"></div>
+      <div><label>Inspector (QC)</label><input type="text" id="f_qc" placeholder="QC name"></div>
+    </div>
+    <label>Inspection date</label>
+    <input type="date" id="f_date">
+    <label>Video link (Drive)</label>
+    <input type="text" id="f_video" placeholder="https://drive.google.com/...">
+  </div>
+
+  <div class="block">
+    <p class="block-title">Inspection Data</p>
+    <div class="row2">
+      <div><label>Total qty</label><input type="number" id="f_total"></div>
+      <div><label>Qty checked</label><input type="number" id="f_checked"></div>
+    </div>
+    <div class="row3">
+      <div><label>Critical</label><input type="number" id="f_critical" value="0"></div>
+      <div><label>Major</label><input type="number" id="f_major" value="0"></div>
+      <div><label>Minor</label><input type="number" id="f_minor" value="0"></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line);">
+      <p class="block-title" style="margin:0;padding:0;border:none;">Carton / Box Information</p>
+      <div style="display:flex;flex-shrink:0;align-items:center;gap:2px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;">
+        <button type="button" title="Remove one box" onclick="resizeBoxCount(boxCount-1)"
+          style="width:24px;height:24px;border:none;background:#fff;color:var(--accent);font-size:15px;font-weight:700;line-height:1;">−</button>
+        <span id="boxCountLabel" style="min-width:20px;text-align:center;font-size:12px;font-weight:700;color:var(--ink);">3</span>
+        <button type="button" title="Add one box" onclick="resizeBoxCount(boxCount+1)"
+          style="width:24px;height:24px;border:none;background:#fff;color:var(--accent);font-size:15px;font-weight:700;line-height:1;">+</button>
+      </div>
+    </div>
+    <div class="row2" style="margin-bottom:8px;">
+      <div><label>Cube (CBM)</label><input type="text" id="f_cube" placeholder="e.g. 0.25"></div>
+      <div><label>Carton size — common (LxWxH, in)</label><input type="text" id="f_carton_size_common" placeholder="if all boxes are the same size"></div>
+    </div>
+    <div class="row2" style="margin-bottom:12px;">
+      <div>
+        <label>NW Actual (kg)</label>
+        <input type="text" id="f_nw_actual_kg" placeholder="kg" oninput="document.getElementById('f_nw_actual_lbs').textContent = kgToLbsValue(this.value) || '0'">
+        <div class="note" id="f_nw_actual_lbs_note" style="margin-top:2px">≈ <span id="f_nw_actual_lbs">0</span> lbs</div>
+      </div>
+      <div>
+        <label>GW Actual (kg)</label>
+        <input type="text" id="f_gw_actual_kg" placeholder="kg" oninput="document.getElementById('f_gw_actual_lbs').textContent = kgToLbsValue(this.value) || '0'">
+        <div class="note" style="margin-top:2px">≈ <span id="f_gw_actual_lbs">0</span> lbs</div>
+      </div>
+    </div>
+    <div class="box-row">
+      <div></div>
+      <div class="note" style="margin:0">Dimension (LxWxH, in)</div>
+      <div class="note" style="margin:0">Gross (kg)</div>
+      <div class="note" style="margin:0">Gross (lbs)</div>
+      <div class="note" style="margin:0">Net (kg)</div>
+      <div class="note" style="margin:0">Net (lbs)</div>
+    </div>
+    <div class="note" style="margin:4px 0 6px">LBS columns are calculated automatically (kg × 2.205).</div>
+    <div id="boxRows"></div>
+  </div>
+  </div>
+
+  <div class="right-col">
+  <div class="block">
+    <p class="block-title">Inspection Sections</p>
+    <div id="sectionsWrap"></div>
+    <div id="emptyHint" class="empty-hint">No sections yet. Tap "+ Add section" below.</div>
+    <button type="button" class="add-section-btn" onclick="addSection()">+ Add section</button>
+  </div>
+  </div>
+ </div>
+
+ <div class="block">
+   <p class="block-title">Final Result</p>
+   <label>Result — set this after completing all sections above</label>
+   <div class="result-toggle">
+     <button type="button" id="btnPass" class="active pass" onclick="setResult('PASS')">PASS</button>
+     <button type="button" id="btnFail" class="fail" onclick="setResult('FAIL')">FAIL</button>
+   </div>
+ </div>
+</main>
+
+<footer class="action-bar">
+  <button class="btn btn-primary" id="exportBtn" onclick="exportWord()" style="flex:1">Export Word (.docx)</button>
+</footer>
+
+<input type="file" id="globalFileInput" accept="image/*" multiple style="display:none">
+
+<script>
+const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  WidthType, ShadingType, BorderStyle, ImageRun, AlignmentType,
+  HeadingLevel, VerticalAlign, Header, Footer, PageNumber, PageBreak } = docx;
+
+const INK="1C1C1A", MUTED="6B6A63", LINE="D8D6CD", ACCENT="C0503A", PANEL="F1EFE7";
+const PAGE_W=11906, PAGE_H=16838, MARGIN=360, CONTENT_W=PAGE_W-MARGIN*2;
+
+let sections = [];
+let secCounter = 0;
+let currentResult = 'PASS';
+
+function setResult(r){
+  currentResult = r;
+  document.getElementById('btnPass').classList.toggle('active', r==='PASS');
+  document.getElementById('btnFail').classList.toggle('active', r==='FAIL');
+  const badge = document.getElementById('resultBadge');
+  badge.textContent = r;
+  badge.style.background = (r === 'PASS') ? 'var(--ok)' : 'var(--accent)';
+}
+
+// ---- Box rows (dynamic count, data persisted across resize) ----
+let boxCount = 3;
+let boxData = [0,1,2].map(() => ({ dim:'', gross:'', net:'' }));
+
+function kgToLbsValue(kgStr){
+  const kg = parseFloat(kgStr);
+  if (isNaN(kg)) return '';
+  return (kg * 2.205).toFixed(1);
+}
+function updateBoxField(i, field, value){
+  boxData[i][field] = value;
+  if (field === 'gross') document.getElementById('box_gross_lbs_'+i).value = kgToLbsValue(value);
+  if (field === 'net') document.getElementById('box_net_lbs_'+i).value = kgToLbsValue(value);
+}
+function resizeBoxCount(n){
+  n = Math.max(1, Math.min(20, n));
+  const next = [];
+  for (let i=0;i<n;i++) next.push(boxData[i] || { dim:'', gross:'', net:'' });
+  boxData = next;
+  boxCount = n;
+  document.getElementById('boxCountLabel').textContent = n;
+  renderBoxRows();
+}
+function renderBoxRows(){
+  const wrap = document.getElementById('boxRows');
+  wrap.innerHTML = '';
+  boxData.forEach((b,i)=>{
+    const row = document.createElement('div');
+    row.className = 'box-row';
+    row.innerHTML = `
+      <div class="box-label">Box ${i+1} of ${boxCount}</div>
+      <input type="text" id="box_dim_${i}" placeholder="L x W x H (in)" value="${b.dim}" oninput="updateBoxField(${i},'dim',this.value)">
+      <input type="text" id="box_gross_${i}" placeholder="kg" value="${b.gross}" oninput="updateBoxField(${i},'gross',this.value)">
+      <input type="text" id="box_gross_lbs_${i}" placeholder="lbs" value="${kgToLbsValue(b.gross)}" readonly>
+      <input type="text" id="box_net_${i}" placeholder="kg" value="${b.net}" oninput="updateBoxField(${i},'net',this.value)">
+      <input type="text" id="box_net_lbs_${i}" placeholder="lbs" value="${kgToLbsValue(b.net)}" readonly>
+    `;
+    wrap.appendChild(row);
+  });
+}
+renderBoxRows();
+
+// ---- Sections ----
+function addSection(name, slotCount){
+  secCounter++;
+  const count = slotCount || 8;
+  sections.push({ id:'sec'+secCounter, name:name||'', desc:'', photos:new Array(count).fill(null) });
+  renderSections();
+}
+function removeSection(id){
+  sections = sections.filter(s=>s.id!==id);
+  renderSections();
+}
+function updateSectionField(id, field, value){
+  const s = sections.find(s=>s.id===id);
+  if (s) s[field] = value;
+}
+
+// ---- Client-side image compression (the fix for the 100MB problem) ----
+// Downscales to max 1400px on the long edge and re-encodes as JPEG q=0.75.
+function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1800;
+        let w = img.width, h = img.height;
+        if (w > h && w > MAX) { h = Math.round(h*MAX/w); w = MAX; }
+        else if (h > MAX) { w = Math.round(w*MAX/h); h = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          const fr = new FileReader();
+          fr.onload = ev => resolve({ dataUrl: ev.target.result, blob, w, h, size: blob.size });
+          fr.readAsDataURL(blob);
+        }, 'image/jpeg', 0.80);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function addPhotoToSlot(id, idx, file){
+  if (!file) return;
+  const s = sections.find(s=>s.id===id);
+  if (!s) return;
+  const compressed = await compressImage(file);
+  s.photos[idx] = compressed;
+  renderSections();
+}
+
+// Fill multiple selected photos into the next empty boxes, starting at
+// startIdx, skipping boxes that already have a photo. Caps at 8 per pick.
+async function handleMultipleFiles(secId, startIdx, fileList){
+  const s = sections.find(s=>s.id===secId);
+  if (!s) return;
+  let files = Array.from(fileList);
+  if (files.length > 8){
+    alert(`You selected ${files.length} photos — only the first 8 were used.`);
+    files = files.slice(0,8);
+  }
+  let slotIdx = startIdx;
+  for (const file of files){
+    while (slotIdx < s.photos.length && s.photos[slotIdx] !== null) slotIdx++;
+    if (slotIdx >= s.photos.length){
+      alert('Not enough empty boxes left in this section for all selected photos.');
+      break;
+    }
+    const compressed = await compressImage(file);
+    s.photos[slotIdx] = compressed;
+    slotIdx++;
+    renderSections();
+  }
+}
+
+// ---- Shared hidden file input for ALL empty photo boxes ----
+// (previously each box had its own <label>+<input>, which caused the
+// first box in a grid to render at a different height on iOS Safari)
+let pendingSlot = null;
+function openPickerForSlot(secId, idx){
+  pendingSlot = { secId, idx };
+  document.getElementById('globalFileInput').click();
+}
+document.getElementById('globalFileInput').addEventListener('change', function(){
+  const files = Array.from(this.files || []);
+  this.value = '';
+  if (pendingSlot && files.length){
+    handleMultipleFiles(pendingSlot.secId, pendingSlot.idx, files);
+  }
+  pendingSlot = null;
+});
+// ---- Tiny placeholder image (embedded, shown in unfilled slots and in the exported Word file) ----
+const PLACEHOLDER_B64 = "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";
+const PLACEHOLDER_DATA_URL = "data:image/png;base64," + PLACEHOLDER_B64;
+
+function removePhoto(secId, idx){
+  const s = sections.find(s=>s.id===secId);
+  if (s) s.photos[idx] = null;
+  renderSections();
+}
+
+function fmtSize(bytes){
+  if (bytes < 1024) return bytes+'B';
+  if (bytes < 1024*1024) return Math.round(bytes/1024)+'KB';
+  return (bytes/1024/1024).toFixed(1)+'MB';
+}
+
+function resizeSlotCount(secId, newCountRaw){
+  const s = sections.find(s=>s.id===secId);
+  if (!s) return;
+  const newCount = Math.max(1, Math.min(200, parseInt(newCountRaw,10) || s.photos.length));
+  const old = s.photos;
+  const next = new Array(newCount).fill(null);
+  for (let i=0;i<Math.min(old.length,newCount);i++) next[i] = old[i];
+  s.photos = next;
+  renderSections();
+}
+
+function renderSections(){
+  const wrap = document.getElementById('sectionsWrap');
+  const hint = document.getElementById('emptyHint');
+  hint.style.display = sections.length ? 'none' : 'block';
+  wrap.innerHTML = '';
+  sections.forEach((s,si)=>{
+    const filledCount = s.photos.filter(Boolean).length;
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    const head = document.createElement('div');
+    head.className = 'section-head';
+    head.innerHTML = `
+      <span style="font-size:12px;color:var(--muted);font-weight:700;min-width:14px;flex-shrink:0">${si+1}.</span>
+      <input type="text" placeholder="Section name" value="${s.name}"
+        oninput="updateSectionField('${s.id}','name',this.value)">
+      <div style="display:flex;flex-shrink:0;align-items:center;gap:2px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;">
+        <button type="button" title="Remove one box" onclick="resizeSlotCount('${s.id}', ${s.photos.length-1})"
+          style="width:24px;height:24px;border:none;background:#fff;color:var(--accent);font-size:15px;font-weight:700;line-height:1;">−</button>
+        <span style="min-width:22px;text-align:center;font-size:12px;font-weight:700;color:var(--ink);">${s.photos.length}</span>
+        <button type="button" title="Add one box" onclick="resizeSlotCount('${s.id}', ${s.photos.length+1})"
+          style="width:24px;height:24px;border:none;background:#fff;color:var(--accent);font-size:15px;font-weight:700;line-height:1;">+</button>
+      </div>
+      <button type="button" class="section-del" onclick="removeSection('${s.id}')">✕</button>
+    `;
+    const body = document.createElement('div');
+    body.className = 'section-body';
+    const countNote = document.createElement('div');
+    countNote.className = 'note';
+    countNote.style.marginBottom = '6px';
+    countNote.textContent = `${filledCount} / ${s.photos.length} photos added`;
+    body.appendChild(countNote);
+    const desc = document.createElement('textarea');
+    desc.placeholder = 'Description / notes...';
+    desc.value = s.desc;
+    desc.oninput = () => updateSectionField(s.id,'desc',desc.value);
+    body.appendChild(desc);
+
+    const grid = document.createElement('div');
+    grid.className = 'photo-grid';
+    s.photos.forEach((p, idx)=>{
+      const slot = document.createElement('div');
+      if (p){
+        slot.className = 'photo-slot';
+        slot.innerHTML = `<img src="${p.dataUrl}"><div class="photo-size">${fmtSize(p.size)}</div><button type="button" class="photo-remove" onclick="removePhoto('${s.id}',${idx})">✕</button>`;
+      } else {
+        slot.className = 'photo-add';
+        slot.innerHTML = `<div class="photo-add-inner"><span class="plus">＋</span><span>Photo ${idx+1}</span></div>`;
+        slot.onclick = () => openPickerForSlot(s.id, idx);
+      }
+      grid.appendChild(slot);
+    });
+    body.appendChild(grid);
+    card.appendChild(head);
+    card.appendChild(body);
+    wrap.appendChild(card);
+  });
+  squareAllPhotoGrids();
+}
+
+// Force every photo box to a perfect square using measured pixel width,
+// instead of relying on CSS aspect-ratio / padding-hacks (unreliable on iOS Safari).
+function squareAllPhotoGrids(){
+  document.querySelectorAll('.photo-grid').forEach(grid => {
+    const cells = grid.querySelectorAll('.photo-slot, .photo-add');
+    if (!cells.length) return;
+    const gap = 6, cols = 4;
+    const containerWidth = grid.getBoundingClientRect().width;
+    if (containerWidth <= 0) return;
+    const cellSize = Math.floor((containerWidth - gap * (cols - 1)) / cols);
+    cells.forEach(cell => {
+      cell.style.flex = 'none';
+      cell.style.width = cellSize + 'px';
+      cell.style.height = cellSize + 'px';
+    });
+  });
+}
+let squareResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(squareResizeTimer);
+  squareResizeTimer = setTimeout(squareAllPhotoGrids, 150);
+});
+
+function computeReportName(){
+  const f = document.getElementById('f_factory').value.trim();
+  const po = document.getElementById('f_po').value.trim();
+  const item = document.getElementById('f_item').value.trim();
+  const parts = [];
+  if (f) parts.push(f);
+  if (po) parts.push('PO# ' + po);
+  if (item) parts.push('ITEM# ' + item);
+  return parts.length ? parts.join(' - ') : 'QC_Report';
+}
+
+// ---- Word (.docx) export ----
+function cellBorderNone(){ return { top:{style:BorderStyle.NONE,size:0,color:"FFFFFF"}, bottom:{style:BorderStyle.NONE,size:0,color:"FFFFFF"}, left:{style:BorderStyle.NONE,size:0,color:"FFFFFF"}, right:{style:BorderStyle.NONE,size:0,color:"FFFFFF"} }; }
+function cellBorderLine(){ return { top:{style:BorderStyle.SINGLE,size:4,color:LINE}, bottom:{style:BorderStyle.SINGLE,size:4,color:LINE}, left:{style:BorderStyle.SINGLE,size:4,color:LINE}, right:{style:BorderStyle.SINGLE,size:4,color:LINE} }; }
+function infoCell(text,isLabel,width){
+  return new TableCell({
+    width:{size:width,type:WidthType.DXA},
+    shading: isLabel ? {type:ShadingType.CLEAR,fill:PANEL} : {type:ShadingType.CLEAR,fill:"FFFFFF"},
+    verticalAlign: VerticalAlign.CENTER,
+    margins:{top:80,bottom:80,left:120,right:120},
+    children:[new Paragraph({children:[new TextRun({text:text||'',bold:isLabel,size:20,color:isLabel?INK:MUTED})]})]
+  });
+}
+
+async function exportWord(){
+  const btn = document.getElementById('exportBtn');
+  const status = document.getElementById('status') || (()=>{
+    const el = document.createElement('div'); el.id='status'; el.className='status';
+    document.querySelector('footer').before(el); return el;
+  })();
+  btn.disabled = true;
+  status.textContent = 'Building document...';
+
+  const colW=[2565,2921,2565,3135];
+  const titlePar = new Paragraph({ children:[new TextRun({text:"PRE-SHIPMENT INSPECTION REPORT",bold:true,size:40,color:INK})], spacing:{after:80} });
+  const subtitlePar = new Paragraph({ children:[new TextRun({text:computeReportName(),bold:true,size:24,color:ACCENT})], spacing:{after:200} });
+
+  const infoRows = [
+    ["Item", document.getElementById('f_item').value, "Client", document.getElementById('f_client').value],
+    ["LINON PO#", document.getElementById('f_po').value, "Name factory", document.getElementById('f_factory').value],
+    ["Inspector (QC)", document.getElementById('f_qc').value, "Inspection date", document.getElementById('f_date').value],
+    ["Total qty", document.getElementById('f_total').value, "Qty checked", document.getElementById('f_checked').value],
+    ["Critical / Major / Minor", `${document.getElementById('f_critical').value||0} / ${document.getElementById('f_major').value||0} / ${document.getElementById('f_minor').value||0}`, "Result", currentResult]
+  ];
+  const infoTable = new Table({
+    width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths:colW,
+    rows: infoRows.map(r=>new TableRow({children:[infoCell(r[0],true,colW[0]),infoCell(r[1],false,colW[1]),infoCell(r[2],true,colW[2]),infoCell(r[3],false,colW[3])]}))
+  });
+
+  const videoLinkTable = new Table({
+    width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths:[colW[0],colW[1]+colW[2]+colW[3]],
+    rows:[new TableRow({children:[
+      infoCell("Video link (Drive)",true,colW[0]),
+      infoCell(document.getElementById('f_video').value,false,colW[1]+colW[2]+colW[3])
+    ]})]
+  });
+
+  const summaryRows = [
+    ["Cube (CBM)", document.getElementById('f_cube').value, "Carton size (common)", document.getElementById('f_carton_size_common').value],
+    ["NW Actual", kgLbsDisplay(document.getElementById('f_nw_actual_kg').value), "GW Actual", kgLbsDisplay(document.getElementById('f_gw_actual_kg').value)]
+  ];
+  function kgLbsDisplay(kg){
+    kg = (kg||'').trim();
+    if (!kg) return '';
+    const lbs = kgToLbsValue(kg);
+    return lbs ? `${kg} kg (${lbs} lbs)` : `${kg} kg`;
+  }
+  const summaryTable = new Table({
+    width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths:colW,
+    rows: summaryRows.map(r=>new TableRow({children:[infoCell(r[0],true,colW[0]),infoCell(r[1],false,colW[1]),infoCell(r[2],true,colW[2]),infoCell(r[3],false,colW[3])]}))
+  });
+
+  const boxColW=[1050,2800,1834,1834,1834,1834]; // Box#, Dimension, Gross kg, Gross lbs, Net kg, Net lbs — sums to 11186
+  const boxHeaderRow = new TableRow({children:[
+    infoCell("Box #",true,boxColW[0]),
+    infoCell("Carton dimension (LxWxH, in)",true,boxColW[1]),
+    infoCell("Gross (kg)",true,boxColW[2]),
+    infoCell("Gross (lbs)",true,boxColW[3]),
+    infoCell("Net (kg)",true,boxColW[4]),
+    infoCell("Net (lbs)",true,boxColW[5])
+  ]});
+  const boxRows = boxData.map((b,i)=>new TableRow({children:[
+    infoCell(`Box ${i+1} of ${boxCount}`,true,boxColW[0]),
+    infoCell(document.getElementById('box_dim_'+i).value,false,boxColW[1]),
+    infoCell(document.getElementById('box_gross_'+i).value,false,boxColW[2]),
+    infoCell(document.getElementById('box_gross_lbs_'+i).value,false,boxColW[3]),
+    infoCell(document.getElementById('box_net_'+i).value,false,boxColW[4]),
+    infoCell(document.getElementById('box_net_lbs_'+i).value,false,boxColW[5])
+  ]}));
+  const boxTable = new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths:boxColW, rows:[boxHeaderRow,...boxRows] });
+
+  // ---- Section photo grids, using the QC's actual compressed photos ----
+  const gapColW = 100;
+  const photoColW = Math.floor((CONTENT_W - gapColW*3)/4);
+
+  function gapCell(){ return new TableCell({width:{size:gapColW,type:WidthType.DXA},borders:cellBorderNone(),children:[new Paragraph({children:[]})]}); }
+  function blankCell(){ return new TableCell({width:{size:photoColW,type:WidthType.DXA},borders:cellBorderNone(),children:[new Paragraph({children:[]})]}); }
+  function captionCell(text){ return new TableCell({width:{size:photoColW,type:WidthType.DXA},borders:cellBorderNone(),children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text,size:15,color:MUTED})]})]}); }
+
+  async function photoCellFromDataUrl(dataUrl, w, h){
+    const resp = await fetch(dataUrl);
+    const buf = await resp.arrayBuffer();
+    const aspect = w/h;
+    let dispW = photoColW/1440*96*0.9, dispH = dispW/aspect;
+    return new TableCell({
+      width:{size:photoColW,type:WidthType.DXA}, borders:cellBorderLine(),
+      margins:{top:60,bottom:60,left:0,right:0}, verticalAlign:VerticalAlign.CENTER,
+      children:[new Paragraph({alignment:AlignmentType.CENTER, children:[new ImageRun({type:"jpg", data:new Uint8Array(buf), transformation:{width:Math.round(dispW),height:Math.round(dispH)}})]})]
+    });
+  }
+
+  // Unfilled slots still get embedded as the same faint placeholder image (like the
+  // Word template) — docx dedupes identical image data into a single media file,
+  // so repeating this across many empty slots costs almost nothing in file size.
+  let placeholderBufCache = null;
+  async function getPlaceholderBuf(){
+    if (!placeholderBufCache){
+      const resp = await fetch(PLACEHOLDER_DATA_URL);
+      placeholderBufCache = new Uint8Array(await resp.arrayBuffer());
+    }
+    return placeholderBufCache;
+  }
+  async function placeholderPhotoCell(){
+    const buf = await getPlaceholderBuf();
+    let dispW = photoColW/1440*96*0.9, dispH = dispW*0.75; // placeholder art is 4:3
+    return new TableCell({
+      width:{size:photoColW,type:WidthType.DXA}, borders:cellBorderLine(),
+      margins:{top:60,bottom:60,left:0,right:0}, verticalAlign:VerticalAlign.CENTER,
+      children:[new Paragraph({alignment:AlignmentType.CENTER, children:[new ImageRun({type:"png", data:buf, transformation:{width:Math.round(dispW),height:Math.round(dispH)}})]})]
+    });
+  }
+
+  async function buildPhotoGridRows(photos){
+    const rows = [];
+    const numRows = Math.max(1, Math.ceil(photos.length/4));
+    for (let r=0;r<numRows;r++){
+      const photoRow=[], capRow=[];
+      for (let c=0;c<4;c++){
+        const idx = r*4+c;
+        if (idx < photos.length){
+          const p = photos[idx];
+          photoRow.push(p ? await photoCellFromDataUrl(p.dataUrl, p.w, p.h) : await placeholderPhotoCell());
+          capRow.push(captionCell(`Photo ${idx+1}`));
+        } else {
+          photoRow.push(blankCell()); capRow.push(blankCell());
+        }
+        if (c<3){ photoRow.push(gapCell()); capRow.push(gapCell()); }
+      }
+      rows.push(new TableRow({children:photoRow}));
+      rows.push(new TableRow({children:capRow}));
+    }
+    return rows;
+  }
+
+  let sectionParas = [];
+  for (let i=0;i<sections.length;i++){
+    const s = sections[i];
+    if (i>0) sectionParas.push(new Paragraph({children:[new PageBreak()]}));
+    sectionParas.push(new Paragraph({ heading:HeadingLevel.HEADING_2, spacing:{before:320,after:80}, children:[new TextRun({text:`${i+1}. ${s.name||'Untitled section'}`,bold:true,size:26,color:INK})] }));
+    if (s.desc) sectionParas.push(new Paragraph({ spacing:{after:160}, children:[new TextRun({text:s.desc,italics:true,size:19,color:MUTED})] }));
+    status.textContent = `Embedding photos for section ${i+1}/${sections.length}...`;
+    if (s.photos.length){
+      const rows = await buildPhotoGridRows(s.photos);
+      sectionParas.push(new Table({ width:{size:CONTENT_W,type:WidthType.DXA}, columnWidths:[photoColW,gapColW,photoColW,gapColW,photoColW,gapColW,photoColW], rows }));
+    }
+  }
+
+  const doc = new Document({
+    sections:[{
+      properties:{page:{size:{width:PAGE_W,height:PAGE_H},margin:{top:MARGIN,bottom:MARGIN,left:MARGIN,right:MARGIN}}},
+      headers:{default:new Header({children:[new Paragraph({children:[]})]})},
+      footers:{default:new Footer({children:[new Paragraph({alignment:AlignmentType.RIGHT,children:[new TextRun({text:"Page ",size:14,color:MUTED}),new TextRun({children:[PageNumber.CURRENT],size:14,color:MUTED})]})]})},
+      children:[titlePar,subtitlePar,infoTable,new Paragraph({spacing:{before:100},children:[]}),videoLinkTable,
+        new Paragraph({spacing:{before:260,after:80},children:[new TextRun({text:"Carton / Box information:",bold:true,italics:true,size:19,color:MUTED})]}),
+        summaryTable, new Paragraph({spacing:{before:120},children:[]}),
+        boxTable, ...sectionParas]
+    }]
+  });
+
+  status.textContent = 'Packing .docx file...';
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = computeReportName().replace(/[^a-zA-Z0-9-_]/g,'_') + '.docx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  status.textContent = `Done — file size: ${fmtSize(blob.size)}`;
+  btn.disabled = false;
+}
+
+// start with the 8 preset sections matching the Word V1 template
+const PRESET_SECTIONS = [
+  ["Carton checking / Packing / Weight / Label check", 32],
+  ["Product dimension", 10],
+  ["Compare approved sample and product", 10],
+  ["Mass production overall checking", 10],
+  ["Wooden / PU color checking", 10],
+  ["MC (Moisture Content)", 10],
+  ["Defect found / Repair", 10],
+  ["Others", 10]
+];
+PRESET_SECTIONS.forEach(([name,count]) => addSection(name,count));
+document.getElementById('f_date').valueAsDate = new Date();
+</script>
+</body>
+</html>
